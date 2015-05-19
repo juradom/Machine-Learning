@@ -1,0 +1,44 @@
+---
+title: 'PML - Writeup: Exercise Manner Prediction'
+author: "mjurado"
+date: "Thursday, May 14, 2015"
+output: html_document
+---
+###Executive Summary:
+
+The goal of this analysis is to predict whether the participants in a Human Activity Recognition research project.  The data for this project is sourced from [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har) which relates to the publication **Wearable Computing: Accelerometers' Data Classification of Body Postures and Movements** by Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H.
+ (Read more: http://groupware.les.inf.puc-rio.br/har#ixzz3aS0pMK8a)
+
+```{r echo=FALSE}
+
+# data location
+url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+
+# download file if not exists
+if(!file.exists("./har.csv")){ 
+  download.file(url,"./har.csv", method="curl")  
+  } 
+
+# define training set
+harTraining <- read.csv("./har.csv")
+```
+
+
+###Exploratory Data Analysis
+
+According to the documentation from the HAR project website, there were six male participants that performed dumbell curls five different ways.  Only one of the ways is correct (classe A).  The other four classes (B,C,D,E) were intentionally performed poorly.  _Appendix A_ shows a table of all the participants and the number of observations per classe type.
+
+###Fitting The Model
+
+
+###Cross Validation
+
+###Sample Error
+
+###Predictions
+###APPENDIX A: Exploratory Figures
+```{r}
+table(har$user_name, har$classe)
+
+```
+
