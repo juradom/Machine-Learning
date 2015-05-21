@@ -4,41 +4,86 @@ author: "mjurado"
 date: "Thursday, May 14, 2015"
 output: html_document
 ---
-###Executive Summary:
-
-The goal of this analysis is to predict whether the participants in a Human Activity Recognition research project.  The data for this project is sourced from [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har) which relates to the publication **Wearable Computing: Accelerometers' Data Classification of Body Postures and Movements** by Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H.
- (Read more: http://groupware.les.inf.puc-rio.br/har#ixzz3aS0pMK8a)
-
-```{r echo=FALSE}
-
+####Executive Summary:
+The goal of this analysis is to predict whether the participants in a Human Activity Recognition research project performed an exercise correctly.  The data for this project is sourced from [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har) which relates to the publication **Wearable Computing: Accelerometers' Data Classification of Body Postures and Movements** by Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H.
+(Read more: http://groupware.les.inf.puc-rio.br/har#ixzz3aS0pMK8a)
+ 
+According to the documentation from the HAR project website, there were six male participants that performed dumbell curls five different ways.  Only one of the ways is correct (classe A).  The other four classes (B,C,D,E) were intentionally performed poorly.
+ 
+ 
+```{r message=FALSE, warning=FALSE}
+library(ggplot2); library(caret)
 # data location
-url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
-
+url <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
 # download file if not exists
-if(!file.exists("./har.csv")){ 
-  download.file(url,"./har.csv", method="curl")  
-  } 
-
-# define training set
-harTraining <- read.csv("./har.csv")
+if(!file.exists("./har.csv")){
+  download.file(url,"./har.csv")
+  }
+# extract/define har data set
+har <- read.csv("./har.csv")
 ```
-
-
-###Exploratory Data Analysis
-
-According to the documentation from the HAR project website, there were six male participants that performed dumbell curls five different ways.  Only one of the ways is correct (classe A).  The other four classes (B,C,D,E) were intentionally performed poorly.  _Appendix A_ shows a table of all the participants and the number of observations per classe type.
-
-###Fitting The Model
-
-
-###Cross Validation
-
-###Sample Error
-
-###Predictions
-###APPENDIX A: Exploratory Figures
+ 
+####Exploratory Data Analysis
+The HAR data contains 19622 observations with 160 variables.  After an initial review, I noticed that there were a number extraneous columns, so I determined which columns were empty and filtered those out.  The original HAR dataset contained **`r ncol(har)` columns**. 
+ 
 ```{r}
-table(har$user_name, har$classe)
+# Determine which columns are empty
+emptyCols <- NULL
+for (i in 1:length(har)) {
+    if (sum(is.na(har[,i])) != 0) {
+       emptyCols <- rbind(emptyCols, names(har[i]))
+    } 
+}
+ 
+emptyCols <- data.frame(emptyCols)
+colnames(emptyCols) <- "removeCols"
+ 
+# Determine which columns are near zero/insignificant
+nzv <- nearZeroVar(har, saveMetrics = TRUE)
+nzvCols <- row.names(nzv[grep("TRUE", nzv$nzv),])
+nzvCols <- data.frame(nzvCols)
+colnames(nzvCols) <- "removeCols"
+ 
+# combine column lists to remove from HAR
+removeCols <- rbind(emptyCols,nzvCols)
+ 
+# remove near columns that are null or with near zero values
+harTrim <- har[, !names(har) %in% removeCols$removeCols]
+ 
+```
+The modified dataset now contains **`r ncol(harTrim)` columns**.  _Appendix A_ shows columns that were removed because the entire column has null values.  _Appendix B_ shows an analysis to find columns with near zero values (nzv=TRUE).  _Appendix C_ shows a resulting HAR dataset with all the empty columns removed.
+ 
+####Cross-Validation
 
+In order to perform cross-validation we split up our trimmed HAR training dataset into two partitions--training and testing sets.  
+```{r}
+# create training and test sets
+inTrain <- createDataPartition(y=harTrim$classe,
+                              p=0.7, list=FALSE)
+training <- harTrim[inTrain,]; testing <- harTrim[-inTrain,]
+dim(training); dim(testing)
+```
+The training set has `r length(training)` rows and `r ncol(training)` columns, while, the testing set has `r length(testing)` rows and `r ncol(testing)` columns
+
+####Prediction Model
+
+```{r}
+set.seed(711)
+library(rattle); library(rpart); library(rpart.plot)
+modFit <- train(classe ~ .,method="rpart",data=training)
+print(modFit$finalModel)
+fancyRpartPlot(modFit$finalModel)
 ```
 
+####APPENDIX A: Columns That Were Completely Null
+```{r} 
+emptyCols
+```
+####APPENDIX B: Columns That Had Near Zero Values (nzv = TRUE)
+```{r}
+nzv
+```
+####APPENDIX C: Columns Remaning After Null and NZV Columns Are Removed
+```{r}
+str(harTrim)
+```
