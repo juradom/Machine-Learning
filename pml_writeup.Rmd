@@ -69,10 +69,13 @@ The training set has `r length(training)` rows and `r ncol(training)` columns, w
 
 ```{r}
 set.seed(711)
-library(rattle); library(rpart); library(rpart.plot)
+library(rattle); library(rpart); library(rpart.plot); library(randomForest)
 modFit <- train(classe ~ .,method="rpart",data=training)
 print(modFit$finalModel)
 fancyRpartPlot(modFit$finalModel)
+
+#modfit = train(classe~., method="rf", data=training)
+#mean(predict(modFit, testing) == testing$classe) * 100
 ```
 
 ####APPENDIX A: Columns That Were Completely Null
