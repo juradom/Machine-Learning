@@ -7,13 +7,12 @@ output: html_document
 ####Executive Summary:
 The goal of this analysis is to predict whether the participants in a Human Activity Recognition research project performed an exercise correctly.  The data for this project is sourced from [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har) which relates to the publication **Wearable Computing: Accelerometers' Data Classification of Body Postures and Movements** by Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H.
 (Read more: http://groupware.les.inf.puc-rio.br/har#ixzz3aS0pMK8a)
- 
 According to the documentation from the HAR project website, there were six male participants that performed dumbell curls five different ways.  Only one of the ways is correct (classe A).  The other four classes (B,C,D,E) were intentionally performed poorly.
  
- 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, echo=FALSE}
 library(ggplot2); library(caret)
-# data location
+set.seed(711)
+# training data location
 url <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
 # download file if not exists
 if(!file.exists("./har.csv")){
@@ -21,65 +20,90 @@ if(!file.exists("./har.csv")){
   }
 # extract/define har data set
 har <- read.csv("./har.csv")
+
+# testing data location
+url <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+# download file if not exists
+if(!file.exists("./hartest.csv")){
+  download.file(url,"./hartest.csv")
+  }
+# extract/define har data set
+hartest <- read.csv("./hartest.csv")
+
 ```
- 
 ####Exploratory Data Analysis
-The HAR data contains 19622 observations with 160 variables.  After an initial review, I noticed that there were a number extraneous columns, so I determined which columns were empty and filtered those out.  The original HAR dataset contained **`r ncol(har)` columns**. 
- 
+The HAR data contains 19622 observations with 160 variables.  After an initial review, I noticed that there were a number extraneous columns, so I determined which columns were empty and filtered those out.  The original HAR dataset contained **`r ncol(har)` columns**.
+
+To manage the noise and to make the model run faster I perform 3 steps to shorten the list of columns analyzed:
+* Removed empty columns
+* Removed columns that were near zero or insignificant
+* Removed the first 7 columns that seemed to add little information about technique of the exercise 
 ```{r}
 # Determine which columns are empty
 emptyCols <- NULL
 for (i in 1:length(har)) {
     if (sum(is.na(har[,i])) != 0) {
        emptyCols <- rbind(emptyCols, names(har[i]))
-    } 
+    }
 }
- 
 emptyCols <- data.frame(emptyCols)
 colnames(emptyCols) <- "removeCols"
- 
 # Determine which columns are near zero/insignificant
 nzv <- nearZeroVar(har, saveMetrics = TRUE)
 nzvCols <- row.names(nzv[grep("TRUE", nzv$nzv),])
 nzvCols <- data.frame(nzvCols)
 colnames(nzvCols) <- "removeCols"
- 
 # combine column lists to remove from HAR
 removeCols <- rbind(emptyCols,nzvCols)
- 
 # remove near columns that are null or with near zero values
 harTrim <- har[, !names(har) %in% removeCols$removeCols]
- 
+# remove columns that didn't describe exercise technique 
+harTrim <- harTrim[,-(1:7)]
 ```
-The modified dataset now contains **`r ncol(harTrim)` columns**.  _Appendix A_ shows columns that were removed because the entire column has null values.  _Appendix B_ shows an analysis to find columns with near zero values (nzv=TRUE).  _Appendix C_ shows a resulting HAR dataset with all the empty columns removed.
- 
+The modified dataset now contains **`r ncol(harTrim)` columns**.  _Appendix A_ shows columns that were removed because the entire column has null values.  _Appendix B_ shows an analysis to find columns with near zero values (nzv=TRUE).  I also remove the first **7** columns because they seemed like metadata about the record rather than usable features._Appendix C_ shows a resulting HAR dataset with all the non-essential columns removed.
 ####Cross-Validation
+ 
+In order to perform cross-validation we split up our trimmed HAR training dataset into two partitions--training and testing sets. However, because the Random Forest validation takes so long, I created a really small training set to see if I could fit a model with less testing data.  I set the training set to 10% of the data and the testing set to 90%.
 
-In order to perform cross-validation we split up our trimmed HAR training dataset into two partitions--training and testing sets.  
 ```{r}
 # create training and test sets
-inTrain <- createDataPartition(y=harTrim$classe,
-                              p=0.7, list=FALSE)
-training <- harTrim[inTrain,]; testing <- harTrim[-inTrain,]
-dim(training); dim(testing)
+inTrainSmall <- createDataPartition(y=harTrim$classe,
+                              p=0.1, list=FALSE)
+trainingSmall <- harTrim[inTrainSmall,]; testingSmall <- harTrim[-inTrainSmall,]
+dim(trainingSmall); dim(testingSmall)
 ```
-The training set has `r length(training)` rows and `r ncol(training)` columns, while, the testing set has `r length(testing)` rows and `r ncol(testing)` columns
 
+ 
 ####Prediction Model
-
+ 
 ```{r}
 set.seed(711)
-library(rattle); library(rpart); library(rpart.plot); library(randomForest)
-modFit <- train(classe ~ .,method="rpart",data=training)
-print(modFit$finalModel)
-fancyRpartPlot(modFit$finalModel)
+# fit random forest model
+modFit <- train(classe ~ .,method="rf",data=trainingSmall)
+```
+After fitting a random forest model we discover the top 20 variables based on importance.  Appendix D reflect this.
 
-#modfit = train(classe~., method="rf", data=training)
-#mean(predict(modFit, testing) == testing$classe) * 100
+Now let's determine how well this model performs the predictions.
+
+```{r}
+# determine training prediction
+predictionTrain <- predict(modFit, newdata = trainingSmall)
+# apply confusion matrix on training set
+cmTrain <- confusionMatrix(data = predictionTrain, reference = trainingSmall$classe)
+```
+Based on the confusion matrix, the accuracy for my small training dataset was: `r cmTrain$overall[1]*100 `%--clearly an optimistic accuracy rate which gives an error rate of `r 1-cmTrain$overall[1]*100`%.
+
+However, we will apply this model to the testing set on the remaining 90% of the partitioned data.
+
+```{r}
+predictionTest <- predict(modFit, newdata = testingSmall)
+cmTest <- confusionMatrix(data = predictionTest, reference = testingSmall$classe)
 ```
 
+Now this confusion matrix shows an accuracy rate of: `r cmTest$overall[1]*100`% which means the error rate is: `r 1-cmTest$overall[1]*100`%.
+ 
 ####APPENDIX A: Columns That Were Completely Null
-```{r} 
+```{r}
 emptyCols
 ```
 ####APPENDIX B: Columns That Had Near Zero Values (nzv = TRUE)
@@ -89,4 +113,8 @@ nzv
 ####APPENDIX C: Columns Remaning After Null and NZV Columns Are Removed
 ```{r}
 str(harTrim)
+```
+####APPENDIX D: Top 20 Variables Used in Model
+```{r}
+varImp(modFit)
 ```
