@@ -74,7 +74,12 @@ img {
 <div id="exploratory-data-analysis" class="section level4">
 <h4>Exploratory Data Analysis</h4>
 <p>The HAR data contains 19622 observations with 160 variables. After an initial review, I noticed that there were a number extraneous columns, so I determined which columns were empty and filtered those out. The original HAR dataset contained <strong>160 columns</strong>.</p>
-<p>To manage the noise and to make the model run faster I perform 3 steps to shorten the list of columns analyzed: * Removed empty columns * Removed columns that were near zero or insignificant * Removed the first 7 columns that seemed to add little information about technique of the exercise</p>
+<p>To manage the noise and to make the model run faster I perform 3 steps to shorten the list of columns analyzed:</p>
+<ul>
+<li>Removed empty columns</li>
+<li>Removed columns that were near zero or insignificant</li>
+<li>Removed the first 7 columns that seemed to add little information about technique of the exercise</li>
+</ul>
 <pre class="r"><code># Determine which columns are empty
 emptyCols &lt;- NULL
 for (i in 1:length(har)) {
@@ -95,8 +100,8 @@ removeCols &lt;- rbind(emptyCols,nzvCols)
 harTrim &lt;- har[, !names(har) %in% removeCols$removeCols]
 # remove columns that didn't describe exercise technique 
 harTrim &lt;- harTrim[,-(1:7)]</code></pre>
-<p>The modified dataset now contains <strong>52 columns</strong>. <em>Appendix A</em> shows columns that were removed because the entire column has null values. <em>Appendix B</em> shows an analysis to find columns with near zero values (nzv=TRUE). I also remove the first <strong>7</strong> columns because they seemed like metadata about the record rather than usable features.<em>Appendix C</em> shows a resulting HAR dataset with all the non-essential columns removed. ####Cross-Validation</p>
-<p>In order to perform cross-validation we split up our trimmed HAR training dataset into two partitions–training and testing sets. However, because the Random Forest validation takes so long, I created a really small training set to see if I could fit a model with less testing data. I set the training set to 10% of the data and the testing set to 90%.</p>
+<p>The modified dataset now contains <strong>52 columns</strong>. <em>Appendix A</em> shows columns that were removed because the entire column has null values. <em>Appendix B</em> shows an analysis to find columns with near zero values (nzv=TRUE). I also remove the first <strong>7</strong> columns because they seemed like metadata about the record rather than usable features. <em>Appendix C</em> shows a resulting HAR dataset with all the non-essential columns removed. ####Cross-Validation</p>
+<p>In order to perform cross-validation I split up my trimmed HAR training dataset into two partitions–training and testing sets. However, because the Random Forest validation takes so long, I created a really small training set to see if I could fit a model with less testing data. I set the training set to 10% of the data and the testing set to 90%.</p>
 <pre class="r"><code># create training and test sets
 inTrainSmall &lt;- createDataPartition(y=harTrim$classe,
                               p=0.1, list=FALSE)
@@ -119,11 +124,15 @@ modFit &lt;- train(classe ~ .,method=&quot;rf&quot;,data=trainingSmall)</code></
 predictionTrain &lt;- predict(modFit, newdata = trainingSmall)
 # apply confusion matrix on training set
 cmTrain &lt;- confusionMatrix(data = predictionTrain, reference = trainingSmall$classe)</code></pre>
-<p>Based on the confusion matrix, the accuracy for my small training dataset was: 100%–clearly an optimistic accuracy rate which gives an error rate of -99%.</p>
+<p>Based on the confusion matrix, the accuracy for my small training dataset was: <strong>100%</strong>–clearly an optimistic accuracy rate which gives an error rate of <strong>-99%</strong>.</p>
 <p>However, we will apply this model to the testing set on the remaining 90% of the partitioned data.</p>
 <pre class="r"><code>predictionTest &lt;- predict(modFit, newdata = testingSmall)
 cmTest &lt;- confusionMatrix(data = predictionTest, reference = testingSmall$classe)</code></pre>
-<p>Now this confusion matrix shows an accuracy rate of: 94.5237286% which means the error rate is: -93.5237286%.</p>
+<p>Now this confusion matrix shows an accuracy rate of: <strong>94.52%</strong> which means the error rate is: <strong>-93.52%</strong>.</p>
+</div>
+<div id="conclusion" class="section level4">
+<h4>Conclusion</h4>
+<p>As indicated above, when we tested our model against the test set we expect the accuracy rate to be: <strong>94.52%</strong> and error rate to be: <strong>-93.52%</strong>. When I applied my model and submitted my answers against the project test data I got 19 out of 20 correct which was a accuracy rate of 95% or an error rate of 5%. As a result I’d say my reduced training sample size worked to my benefit and gave me a fairly accurate model to work with. Maybe it was luck but I’ll take it.</p>
 </div>
 <div id="appendix-a-columns-that-were-completely-null" class="section level4">
 <h4>APPENDIX A: Columns That Were Completely Null</h4>
@@ -447,6 +456,18 @@ cmTest &lt;- confusionMatrix(data = predictionTest, reference = testingSmall$cla
 ## magnet_forearm_z       13.07
 ## accel_forearm_z        12.92
 ## accel_dumbbell_z       11.88</code></pre>
+</div>
+<div id="appendix-e-project-submission-code" class="section level4">
+<h4>APPENDIX E: Project Submission Code</h4>
+<pre class="r"><code>answers &lt;- predict(modFit, hartest)
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0(&quot;problem_id_&quot;,i,&quot;.txt&quot;)
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+pml_write_files(answers)</code></pre>
 </div>
 
 
