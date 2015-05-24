@@ -100,7 +100,10 @@ removeCols &lt;- rbind(emptyCols,nzvCols)
 harTrim &lt;- har[, !names(har) %in% removeCols$removeCols]
 # remove columns that didn't describe exercise technique 
 harTrim &lt;- harTrim[,-(1:7)]</code></pre>
-<p>The modified dataset now contains <strong>52 columns</strong>. <em>Appendix A</em> shows columns that were removed because the entire column has null values. <em>Appendix B</em> shows an analysis to find columns with near zero values (nzv=TRUE). I also remove the first <strong>7</strong> columns because they seemed like metadata about the record rather than usable features. <em>Appendix C</em> shows a resulting HAR dataset with all the non-essential columns removed. ####Cross-Validation</p>
+<p>The modified dataset now contains <strong>52 columns</strong>. <em>Appendix A</em> shows columns that were removed because the entire column has null values. <em>Appendix B</em> shows an analysis to find columns with near zero values (nzv=TRUE). I also remove the first <strong>7</strong> columns because they seemed like metadata about the record rather than usable features. <em>Appendix C</em> shows a resulting HAR dataset with all the non-essential columns removed.</p>
+</div>
+<div id="cross-validation" class="section level4">
+<h4>Cross-Validation</h4>
 <p>In order to perform cross-validation I split up my trimmed HAR training dataset into two partitions–training and testing sets. However, because the Random Forest validation takes so long, I created a really small training set to see if I could fit a model with less testing data. I set the training set to 10% of the data and the testing set to 90%.</p>
 <pre class="r"><code># create training and test sets
 inTrainSmall &lt;- createDataPartition(y=harTrim$classe,
@@ -118,21 +121,21 @@ modFit &lt;- train(classe ~ .,method=&quot;rf&quot;,data=trainingSmall)</code></
 <pre><code>## Loading required package: randomForest
 ## randomForest 4.6-10
 ## Type rfNews() to see new features/changes/bug fixes.</code></pre>
-<p>After fitting a random forest model we discover the top 20 variables based on importance. Appendix D reflect this.</p>
+<p>After fitting a random forest model we discover the top 20 variables based on importance. <em>Appendix D</em> reflects this.</p>
 <p>Now let’s determine how well this model performs the predictions.</p>
 <pre class="r"><code># determine training prediction
 predictionTrain &lt;- predict(modFit, newdata = trainingSmall)
 # apply confusion matrix on training set
 cmTrain &lt;- confusionMatrix(data = predictionTrain, reference = trainingSmall$classe)</code></pre>
-<p>Based on the confusion matrix, the accuracy for my small training dataset was: <strong>100%</strong>–clearly an optimistic accuracy rate which gives an error rate of <strong>-99%</strong>.</p>
+<p>Based on the confusion matrix, the accuracy for my small training dataset was: <strong>100%</strong>–clearly an optimistic accuracy rate which gives an error rate of <strong>0%</strong>.</p>
 <p>However, we will apply this model to the testing set on the remaining 90% of the partitioned data.</p>
 <pre class="r"><code>predictionTest &lt;- predict(modFit, newdata = testingSmall)
 cmTest &lt;- confusionMatrix(data = predictionTest, reference = testingSmall$classe)</code></pre>
-<p>Now this confusion matrix shows an accuracy rate of: <strong>94.52%</strong> which means the error rate is: <strong>-93.52%</strong>.</p>
+<p>Now this confusion matrix shows an accuracy rate of: <strong>94.52%</strong> which means the error rate is: <strong>5.48%</strong>.</p>
 </div>
 <div id="conclusion" class="section level4">
 <h4>Conclusion</h4>
-<p>As indicated above, when we tested our model against the test set we expect the accuracy rate to be: <strong>94.52%</strong> and error rate to be: <strong>-93.52%</strong>. When I applied my model and submitted my answers against the project test data I got 19 out of 20 correct which was a accuracy rate of 95% or an error rate of 5%. As a result I’d say my reduced training sample size worked to my benefit and gave me a fairly accurate model to work with. Maybe it was luck but I’ll take it.</p>
+<p>As indicated above, when we tested our model against the test set we expect the accuracy rate to be: <strong>94.52%</strong> and error rate to be: <strong>5.48%</strong>. When I applied my model and submitted my answers against the project test data I got 19 out of 20 correct which was a accuracy rate of 95% or an error rate of 5%. As a result I’d say my reduced training sample size worked to my benefit and gave me a fairly accurate model to work with. Maybe it was luck but I’ll take it.</p>
 </div>
 <div id="appendix-a-columns-that-were-completely-null" class="section level4">
 <h4>APPENDIX A: Columns That Were Completely Null</h4>
