@@ -35,6 +35,7 @@ hartest <- read.csv("./hartest.csv")
 The HAR data contains 19622 observations with 160 variables.  After an initial review, I noticed that there were a number extraneous columns, so I determined which columns were empty and filtered those out.  The original HAR dataset contained **`r ncol(har)` columns**.
 
 To manage the noise and to make the model run faster I perform 3 steps to shorten the list of columns analyzed:
+
 * Removed empty columns
 * Removed columns that were near zero or insignificant
 * Removed the first 7 columns that seemed to add little information about technique of the exercise 
@@ -60,10 +61,10 @@ harTrim <- har[, !names(har) %in% removeCols$removeCols]
 # remove columns that didn't describe exercise technique 
 harTrim <- harTrim[,-(1:7)]
 ```
-The modified dataset now contains **`r ncol(harTrim)` columns**.  _Appendix A_ shows columns that were removed because the entire column has null values.  _Appendix B_ shows an analysis to find columns with near zero values (nzv=TRUE).  I also remove the first **7** columns because they seemed like metadata about the record rather than usable features._Appendix C_ shows a resulting HAR dataset with all the non-essential columns removed.
+The modified dataset now contains **`r ncol(harTrim)` columns**.  _Appendix A_ shows columns that were removed because the entire column has null values.  _Appendix B_ shows an analysis to find columns with near zero values (nzv=TRUE).  I also remove the first **7** columns because they seemed like metadata about the record rather than usable features.  _Appendix C_ shows a resulting HAR dataset with all the non-essential columns removed.
 ####Cross-Validation
  
-In order to perform cross-validation we split up our trimmed HAR training dataset into two partitions--training and testing sets. However, because the Random Forest validation takes so long, I created a really small training set to see if I could fit a model with less testing data.  I set the training set to 10% of the data and the testing set to 90%.
+In order to perform cross-validation I split up my trimmed HAR training dataset into two partitions--training and testing sets. However, because the Random Forest validation takes so long, I created a really small training set to see if I could fit a model with less testing data.  I set the training set to 10% of the data and the testing set to 90%.
 
 ```{r}
 # create training and test sets
@@ -72,7 +73,6 @@ inTrainSmall <- createDataPartition(y=harTrim$classe,
 trainingSmall <- harTrim[inTrainSmall,]; testingSmall <- harTrim[-inTrainSmall,]
 dim(trainingSmall); dim(testingSmall)
 ```
-
  
 ####Prediction Model
  
@@ -91,7 +91,7 @@ predictionTrain <- predict(modFit, newdata = trainingSmall)
 # apply confusion matrix on training set
 cmTrain <- confusionMatrix(data = predictionTrain, reference = trainingSmall$classe)
 ```
-Based on the confusion matrix, the accuracy for my small training dataset was: `r cmTrain$overall[1]*100 `%--clearly an optimistic accuracy rate which gives an error rate of `r 1-cmTrain$overall[1]*100`%.
+Based on the confusion matrix, the accuracy for my small training dataset was: **`r round(cmTrain$overall[1]*100, digits=2)`%**--clearly an optimistic accuracy rate which gives an error rate of **`r round(1-(cmTrain$overall[1]*100),digits=2)`%**.
 
 However, we will apply this model to the testing set on the remaining 90% of the partitioned data.
 
@@ -100,8 +100,11 @@ predictionTest <- predict(modFit, newdata = testingSmall)
 cmTest <- confusionMatrix(data = predictionTest, reference = testingSmall$classe)
 ```
 
-Now this confusion matrix shows an accuracy rate of: `r cmTest$overall[1]*100`% which means the error rate is: `r 1-cmTest$overall[1]*100`%.
- 
+Now this confusion matrix shows an accuracy rate of: **`r round(cmTest$overall[1]*100,digits=2)`%** which means the error rate is: **`r round(1-(cmTest$overall[1]*100),digits=2)`%**.
+
+####Conclusion
+As indicated above, when we tested our model against the test set we expect the accuracy rate to be: **`r round(cmTest$overall[1]*100,digits=2)`%** and error rate to be: **`r round(1-(cmTest$overall[1]*100),digits=2)`%**.  When I applied my model and submitted my answers against the project test data I got 19 out of 20 correct which was a accuracy rate of 95% or an error rate of 5%.  As a result I'd say my reduced training sample size worked to my benefit and gave me a fairly accurate model to work with.  Maybe it was luck but I'll take it.
+
 ####APPENDIX A: Columns That Were Completely Null
 ```{r}
 emptyCols
@@ -117,4 +120,16 @@ str(harTrim)
 ####APPENDIX D: Top 20 Variables Used in Model
 ```{r}
 varImp(modFit)
+```
+####APPENDIX E: Project Submission Code
+```{r}
+answers <- predict(modFit, hartest)
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+pml_write_files(answers)
 ```
